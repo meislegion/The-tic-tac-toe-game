@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block content %}
+
+
+ <h2>{%  trans "Войти в игру" %}</h2>
+
+<form action="/login/" method="post">
+    <div class="row">
+        {% csrf_token %}
+        <div class="form-group">
+            <label class="col-sm-offset-1 col-sm-2 control-label">{% trans "Имя" %} </label>
+            <div class="col-sm-6">
+              {{ form.name }}
+            </div>
+        </div>
+    </div>
+    <br>
+    <div class="row">
+        <div class="form-group">
+            <label class="col-sm-offset-1 col-sm-2 control-label">{% trans "Пароль" %} </label>
+            <div class="col-sm-6">
+              {{ form.password }}
+            </div>
+        </div>
+
+    </div>
+    <br>
+    <div class="row">
+        <div class="col-sm-offset-4 col-sm-3"><input type="submit" class="btn" value="{% trans "Войти" %}" /></div>
+    </div>
+</form>
+
+{% if msg %}
+    <br>
+    <div class="row">
+        <div class="col-sm-offset-1 col-sm-10"><span class="alert alert-danger">{{ msg }}</span></div>
+    </div>
+    <br>
+{% endif %}
+
+<div class="row">
+    <div class="col-sm-offset-1 col-sm-10"><span>{% trans "Если у вас нет аккаунта зарегистрируйтесь" %} <a href="/register/">{% trans "здесь" %}</a></span></div>
+</div>
+
+
+
+{% endblock %}

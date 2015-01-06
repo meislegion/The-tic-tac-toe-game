@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block content %}
+
+    <div class="row">
+        <div class="col-sm-offset-1 col-sm-10">
+            <h2>{% trans "Добро пожаловать," %} {{ user.username }}!</h2>
+            <h3>{% trans "Пользователи в онлайн" %}</h3><br>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-offset-1 col-sm-10" id="uo-msg">
+
+        </div>
+    </div>
+    <br>
+    <div class="row">
+        <div class="col-sm-offset-1 col-sm-7">
+            <ul class="list-unstyled" id="user-online">
+
+            </ul>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-sm-offset-1 col-sm-7">
+            <h3>{% trans "Приглашение в игру" %}</h3>
+        </div>
+    </div>
+
+   <div class="row">
+        <div class="col-sm-offset-1 col-sm-7">
+            <ul class="list-unstyled" id="deny-invites">
+
+            </ul>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm-offset-1 col-sm-7">
+            <ul class="list-unstyled" id="user-invites">
+
+            </ul>
+        </div>
+    </div>
+
+    <script>
+
+
+
+
+
+
+        function confirm_invite(user_id) {
+            $.ajax({
+                type: "POST",
+                url: "/api/invite/",
+                data: {action: 'confirm', id: user_id},
+                success: function(data){
+                    if (data[0] == 'warn'){
+                        $("#uo-msg").html('<span class="alert alert-warning">'+data[1]+' <a href="#" onclick="clear_uo_msg()">X</a></span>')
+                    }
+                },
+                dataType: "json"
+
+            });
+        }
+
+        function deny_invite(invite_id){
+            $.ajax({
+                type: "POST",
+                url: "/api/invite/",
+                data: {action: 'deny', id: invite_id},
+                success: function () {
+                    update_invites();
+                },
+                dataType: "json"
+
+            });
+
+        }
+
+    function update_invites(){
+        $.ajax({
+            type: "GET",
+            url: "/api/get_invite/",
+            data: {},
+            success: function (data) {
+                $("#user-invites").html("");
+                for (var i= 0; i <= data.length; i++) {
+                    $("#user-invites").append('<li>'+data[i][0]+'&nbsp;<input type="button" value="+" title="{% trans "Играть" %}" class="btn btn-sm" onclick="confirm_invite('+data[i][1]+')" />' +
+                    '&nbsp;<input type="button" value="-" title="{% trans "Отказаться" %}" class="btn btn-sm" onclick="deny_invite('+data[i][1]+')" /></li>');
+                }
+            },
+            dataType: "json"
+
+        });
+    }
+
+    function clear_uo_msg(){
+            $("#uo-msg").html("");
+        }
+
+    function add_invite(user_id){
+        $.ajax({
+            type: "POST",
+            url: "/api/invite/",
+            data: {action: 'add', id: user_id},
+            success: function(data) {
+                if (data[0] == 'info'){
+                    $("#uo-msg").html('<span class="alert alert-info">'+data[1]+' <a href="#" onclick="clear_uo_msg()">X</a></span>')
+                }
+                if (data[0] == 'warn'){
+                    $("#uo-msg").html('<span class="alert alert-warning">'+data[1]+' <a href="#" onclick="clear_uo_msg()">X</a></span>')
+                }
+            },
+            dataType: "json"
+
+        });
+    }
+
+    function close_invite(invite_id){
+        $.ajax({
+            type: "POST",
+            url: "/api/invite/",
+            data: {action: 'close', id: invite_id},
+            success: function (data) {
+                check_state();
+            },
+            dataType: "json"
+
+        });
+
+    }
+
+    function update_online_users(){
+        $.ajax({
+            type: "GET",
+            url: "/api/get_user_online/",
+            data: {},
+            success: function (data) {
+                $("#user-online").html("");
+                for (var i= 0; i <= data.length; i++) {
+                    $("#user-online").append('<li id=uo'+data[i][1]+'>'+data[i][0]+'&nbsp;<input type="button" value="+" title="{% trans "Пригласить" %}" class="btn btn-sm" onclick="add_invite('+data[i][1]+')" /></li>');
+                }
+            },
+            dataType: "json"
+
+        });
+    }
+
+
+
+        function check_state() {
+            $.ajax({
+                type: "POST",
+                url: "/api/check_state/",
+                data: {},
+                success: function (data) {
+                    $("#deny-invites").html("");
+                    if (data.state == "not_confirm") {
+
+                        for (var i = 0; i <= data.user_array.length; i++) {
+                            $("#deny-invites").append('<li class="alert alert-warning">{% trans "Пользователь" %} ' + data.user_array[i][1] + ' {% trans "отклонил ваше приглашение" %} <a href="#" title="{% trans "Закрыть" %}" onclick="close_invite(' + data.user_array[i][0] + ')">X</a></li>');
+                        }
+                    }
+                    if (data.state == "new_game") {
+                        window.location.replace("/game/");
+                    }
+
+                },
+                dataType: "json"
+
+            });
+        }
+
+
+        function set_user_online() {
+            $.post('/api/set_user_online/')
+        }
+
+
+        setInterval(function() {
+            update_online_users();
+            set_user_online();
+            check_state();
+            update_invites();
+        }, 2000);
+
+        update_online_users();
+        set_user_online();
+        check_state();
+        update_invites();
+
+
+    </script>
+
+{% endblock %}

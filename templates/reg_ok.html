@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block content %}
+
+ <h2>{% trans "Спасибо за регистрацию" %}!</h2>
+
+<span>{% trans "Для начала игры войдите в систему" %} <a href="/login/">{% trans "здесь" %}</a></span>
+
+{% endblock %}

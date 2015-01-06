@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block content %}
+    <h2>{%  trans "Вы играете за" %} <strong>{{ user.username }}</strong>  {%  trans "против" %} <strong>{{ opponent }}</strong>, {%  trans "игра"  %} #{{ game_id }}</h2>
+    <div id='message' class="row"></div>
+    <div id='end_game_buttons' class="row">
+        <div class="col-sm-offset-2 col-sm-3" id="btn1"></div>
+        <div class="col-sm-3" id="btn2"></div>
+    </div>
+    <br>
+    <div class="row">
+        <div class="col-sm-offset-4" id="game_pole">
+            <div class="row show-grid" id="game_pole">
+                <div class="col-sm-2 game-cell" id="id00"></div>
+                <div class="col-sm-2 game-cell" id="id01"></div>
+                <div class="col-sm-2 game-cell" id="id02"></div>
+            </div>
+            <div class="row show-grid">
+                <div class="col-sm-2 game-cell" id="id10"></div>
+                <div class="col-sm-2 game-cell" id="id11"></div>
+                <div class="col-sm-2 game-cell" id="id12"></div>
+            </div>
+            <div class="row show-grid">
+                <div class="col-sm-2 game-cell" id="id20"></div>
+                <div class="col-sm-2 game-cell" id="id21"></div>
+                <div class="col-sm-2 game-cell" id="id22"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        var updateTimer;
+
+        function update_game_pole(data_arr) {
+            for (var i = 0; i <= 2; i++){
+                for (var j = 0; j <= 2; j++){
+
+                    if (data_arr[i][j]==1) {
+                        $("#id" + i + j).text("X");
+                    } else if (data_arr[i][j]==2){
+                        $("#id" + i + j).text("O");
+                    } else if (data_arr[i][j]==0) {
+                        $("#id" + i + j).text("");
+                    }
+                }
+            }
+        }
+
+        function generate_button() {
+            $("#btn1").html('<input type="button" class="btn btn-default" value="{% trans "Повторить" %}" onclick="repeat()">');
+            $("#btn2").html('<input type="button" class="btn btn-default" value="{% trans "Отказаться" %}" onclick="end_game()">');
+
+        }
+
+
+        function update_game_state(){
+
+            $.ajax({
+                type: "POST",
+                url: "/api/game/{{ game_id }}/",
+                data: {action: 'get_status'},
+                success: function (data) {
+                    update_game_pole(data.game_state);
+
+                    if (data.status == 'lock') {
+                        $("#message").html('<div class="col-sm-offset-1 col-sm-9 alert alert-warning">{% trans "Подождите! Ход делает ваш противник!" %}</div>');
+                        $("#btn1").html('');
+                        $("#btn2").html('');
+                    }
+                    if (data.status == 'unlock') {
+                        $("#message").html('<div class="col-sm-offset-1 col-sm-9 alert alert-info">{% trans "Вы можете сделать ход!" %}</div>')
+                        $("#btn1").html('');
+                        $("#btn2").html('');
+                    }
+                    if (data.status == 'dead_heat') {
+                        $("#message").html('<div class="col-sm-offset-1 col-sm-9 alert alert-success">{% trans "Игра закончена! Ничья!" %}</div>');
+                        generate_button();
+                    }
+                    if (data.status == 'win') {
+                        $("#message").html('<div class="col-sm-offset-1 col-sm-9 alert alert-success">{% trans "Игра закончена! Вы выиграли!" %}</div>');
+                        generate_button();
+                    }
+                    if (data.status == 'lose') {
+                        $("#message").html('<div class="col-sm-offset-1 col-sm-9 alert alert-success">{% trans "Игра закончена! Вы проиграли!" %}</div>');
+                        generate_button();
+                    }
+                    if (data.status == 'end_game') {
+                        $("#message").html('<div class="col-sm-offset-1 col-sm-9 alert alert-warning">{% trans "Ваш противник отказался от повторной игры. Вернуться на " %}<a href="/">{%  trans "главную страницу" %}</a></div>');
+                        $("#btn1").html('');
+                        $("#btn2").html('');
+                    }
+                    if (data.status == 'wait_response') {
+                        $("#message").html('<div class="col-sm-offset-1 col-sm-9 alert alert-warning">{% trans "Ожидайте ответа оппонента" %}</div>')
+                        $("#btn1").html('<input type="button" class="btn btn-default" value="{% trans "Отказаться" %}" onclick="end_game()">');
+                        $("#btn2").html('');
+
+                    }
+
+
+                },
+                dataType: "json"
+            });
+        }
+
+        $(".game-cell").click(function() {
+            if (($("#"+this.id).text() == "X") || ($("#"+this.id).text() == "O")) {
+                $("#message").html('<div class="col-sm-offset-1 col-sm-9 alert alert-danger">{% trans "Нельзя сделать ход в эту клетку!" %}</div>');
+            }
+            else {
+                $.ajax({
+                    type: "POST",
+                    url: "/api/game/{{ game_id }}/",
+                    data: {action: 'new_move', cell: this.id},
+                    success: function (data) {
+                        update_game_state(data.game_state);
+                    },
+                    dataType: "json"
+                });
+            }
+        });
+
+        function repeat() {
+
+            $.ajax({
+                    type: "POST",
+                    url: "/api/game/{{ game_id }}/",
+                    data: {action: 'repeat_game'},
+                    success: function (data) {
+                        update_game_state();
+                    },
+                    dataType: "json"
+            });
+
+        }
+
+        function end_game() {
+
+            $.ajax({
+                    type: "POST",
+                    url: "/api/game/{{ game_id }}/",
+                    data: {action: 'end_game'},
+                    dataType: "json"
+            });
+            window.location.replace("/");
+
+        }
+
+        function set_user_online() {
+            $.post('/api/set_user_online/', {game: ''})
+        }
+
+        updateTimer = setInterval(function(){
+            update_game_state();
+            set_user_online();
+        }, 1500
+        );
+        updateTimer;
+
+        update_game_state();
+        set_user_online();
+
+
+    </script>
+{% endblock %}
